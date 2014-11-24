@@ -8,4 +8,8 @@
 *.lst
 *.map
 *.srec
+*.d
+*.eep
+*.lss
+*.sym
 .DS_STORE
