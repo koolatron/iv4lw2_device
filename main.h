@@ -26,7 +26,7 @@ uint32_t Boot_Key ATTR_NO_INIT;
 void Bootloader_Jump_Check(void);
 void Jump_To_Bootloader(void);
 
-void CDC_Task(void);
+void ProcessInput(void);
 void SetupHardware(void);
 
 void EVENT_USB_Device_Connect(void);

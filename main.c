@@ -32,13 +32,23 @@ USB_ClassInfo_CDC_Device_t VirtualSerial_CDC_Interface =
  */
 void Bootloader_Jump_Check(void) ATTR_INIT_SECTION(3);
 
+/** Standard file stream for the CDC interface when set up, so that the virtual CDC COM port can be
+ *  used like any regular character stream in the C APIs.
+ */
+//static FILE USBSerialStream;
+
 int main(void) {
     SetupHardware();
+
+    /* Create a regular character stream for the interface so that it can be used with the stdio.h functions */
+    //CDC_Device_CreateStream(&VirtualSerial_CDC_Interface, &USBSerialStream);
 
     GlobalInterruptEnable();
     
     for (;;) {
-        CDC_Task();
+        ProcessInput();
+        
+        CDC_Device_USBTask(&VirtualSerial_CDC_Interface);
         USB_USBTask();
     };
 }
@@ -58,52 +68,16 @@ void SetupHardware(void)
     USB_Init();
 }
 
-/** Function to manage CDC data transmission and reception to and from the host for the CDC interface, which echoes back
- *  all data sent to it from the host.
- */
-void CDC_Task(void)
+/** Function to deal with incoming serial bytes on CDC interface and take action if necessary */
+void ProcessInput(void)
 {
-    /* Device must be connected and configured for the task to run */
-    if (USB_DeviceState != DEVICE_STATE_Configured)
-      return;
+    int16_t ReceivedByte = CDC_Device_ReceiveByte(&VirtualSerial_CDC_Interface);
 
-    /* Select the Serial Rx Endpoint */
-    Endpoint_SelectEndpoint(CDC_RX_EPADDR);
+    if (!(ReceivedByte < 0 ))
+        CDC_Device_SendByte(&VirtualSerial_CDC_Interface, (uint8_t)ReceivedByte);
 
-    /* Check to see if any data has been received */
-    if (Endpoint_IsOUTReceived())
-    {
-        /* Create a temp buffer big enough to hold the incoming endpoint packet */
-        uint8_t  Buffer[Endpoint_BytesInEndpoint()];
-
-        /* Remember how large the incoming packet is */
-        uint16_t DataLength = Endpoint_BytesInEndpoint();
-
-        /* Read in the incoming packet into the buffer */
-        Endpoint_Read_Stream_LE(&Buffer, DataLength, NULL);
-
-        /* Finalize the stream transfer to send the last packet */
-        Endpoint_ClearOUT();
-
-        if ( Buffer[0] == 'a' ) {
-            Buffer[0] = 'z';
-        }
-
-        /* Select the Serial Tx Endpoint */
-        Endpoint_SelectEndpoint(CDC_TX_EPADDR);
-
-        /* Write the received data to the endpoint */
-        Endpoint_Write_Stream_LE(&Buffer, DataLength, NULL);
-
-        /* Finalize the stream transfer to send the last packet */
-        Endpoint_ClearIN();
-
-        /* Wait until the endpoint is ready for the next packet */
-        Endpoint_WaitUntilReady();
-
-        /* Send an empty packet to prevent host buffering */
-        Endpoint_ClearIN();
-    }
+    if ((uint8_t)ReceivedByte == 'X')
+        Jump_To_Bootloader();
 }
 
 /** Event handler for the library USB Connection event. */
