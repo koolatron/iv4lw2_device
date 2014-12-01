@@ -26,22 +26,26 @@ USB_ClassInfo_CDC_Device_t VirtualSerial_CDC_Interface =
             },
     };
 
-/** Jump to bootloader check
- *  Using the ATTR_INIT_SECTION(3) decoration causes gcc to place this function call in the init section,
- *  which runs before main
- */
-void Bootloader_Jump_Check(void) ATTR_INIT_SECTION(3);
 
 /** Standard file stream for the CDC interface when set up, so that the virtual CDC COM port can be
  *  used like any regular character stream in the C APIs.
  */
-//static FILE USBSerialStream;
+static FILE USBSerialStream;
+
+/** Global variable to store commands from the USBSerial stream */
+typedef struct {
+    uint8_t data[CMD_BUF_SIZE];
+    uint8_t status;
+    size_t  len;
+} buffer;
+
+static buffer cmdBuffer;
 
 int main(void) {
     SetupHardware();
 
     /* Create a regular character stream for the interface so that it can be used with the stdio.h functions */
-    //CDC_Device_CreateStream(&VirtualSerial_CDC_Interface, &USBSerialStream);
+    CDC_Device_CreateStream(&VirtualSerial_CDC_Interface, &USBSerialStream);
 
     GlobalInterruptEnable();
     
@@ -53,7 +57,7 @@ int main(void) {
     };
 }
 
-/** Configures the board hardware and chip peripherals for the demo's functionality. */
+/** Configures the board hardware and chip peripherals. */
 void SetupHardware(void)
 {
     /* Disable watchdog if enabled by bootloader/fuses */
@@ -68,16 +72,50 @@ void SetupHardware(void)
     USB_Init();
 }
 
-/** Function to deal with incoming serial bytes on CDC interface and take action if necessary */
+/** Function to deal with incoming serial bytes on CDC interface and place them in our command buffer */
 void ProcessInput(void)
 {
+    // Grab the next byte from the virutal serial interface
     int16_t ReceivedByte = CDC_Device_ReceiveByte(&VirtualSerial_CDC_Interface);
 
-    if (!(ReceivedByte < 0 ))
-        CDC_Device_SendByte(&VirtualSerial_CDC_Interface, (uint8_t)ReceivedByte);
+    if (!(ReceivedByte < 0 )) {
+        // Echo the received byte on the virtual serial interface 
+        fputc(ReceivedByte, &USBSerialStream);
 
-    if ((uint8_t)ReceivedByte == 'X')
-        Jump_To_Bootloader();
+        // Jump to bootloader if the byte was 'X'
+        if ((uint8_t)ReceivedByte == 'X') {
+            Jump_To_Bootloader();
+        }
+
+        // Do some basic parsing for the command buffer
+        if ((uint8_t)ReceivedByte == '%') {
+            // Command start token
+            cmdBuffer.data[0] = '%';
+            cmdBuffer.data[1] = '\0';
+            cmdBuffer.len = 1;
+        } else {
+            if ((cmdBuffer.len > 0) && (cmdBuffer.status == CMD_NOTREADY)) {
+                if ((uint8_t)ReceivedByte == 0x0d) {
+                    // Command end token
+                    cmdBuffer.status = CMD_READY;
+                } else {
+                    if (cmdBuffer.len < (CMD_BUF_SIZE - 1)) {
+                        // Append characters
+                        cmdBuffer.data[cmdBuffer.len++] = (uint8_t)ReceivedByte;
+                        cmdBuffer.data[cmdBuffer.len+1] = '\0';
+                    }
+                }
+            }
+        }
+
+        if (cmdBuffer.status == CMD_READY) {
+            fputs(cmdBuffer.data, &USBSerialStream);
+            fputs("\r\n", &USBSerialStream);
+            cmdBuffer.len = 0;
+            cmdBuffer.data[0] = '\0';
+            cmdBuffer.status = CMD_NOTREADY;
+        }
+    }
 }
 
 /** Event handler for the library USB Connection event. */
@@ -96,9 +134,7 @@ void EVENT_USB_Device_Disconnect(void)
 void EVENT_USB_Device_ConfigurationChanged(void)
 {
     bool ConfigSuccess = true;
-
     ConfigSuccess &= CDC_Device_ConfigureEndpoints(&VirtualSerial_CDC_Interface);
-
     LEDs_SetAllLEDs(ConfigSuccess ? LEDMASK_USB_READY : LEDMASK_USB_ERROR);
 }
 
