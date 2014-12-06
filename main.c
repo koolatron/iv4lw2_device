@@ -70,6 +70,20 @@ void SetupHardware(void)
     /* Hardware Initialization */
     LEDs_Init();
     USB_Init();
+
+    /* Initialize timer0 */
+    /* This sets up a timer interrupt at 250Hz to signal display service */
+    OCR0A   = 249;                           // Top count
+    TCCR0A |= (1 << WGM01);                  // CTC mode
+    TIMSK0 |= (1 << OCIE0A);                 // Enable interrupt generation on OCR0A match
+    TCCR0B |= (1 << CS02);                   // F/256 prescaler; start timer
+
+    /* Initialize timer1 */
+    /* This sets up a 10kHz signal on OCR1B, PORTC5, to drive our filament */
+    DDRC   |= (1 << 5);                      // Enable OCR1B as output pin
+    OCR1A   = 799;                           // Top count
+    TCCR1A |= (1 << COM1B0);                 // Toggle OCR1B on compare match
+    TCCR1B |= (1 << WGM12) | (1 << CS10);    // CTC mode, F/1 prescaler; start timer
 }
 
 /** Function to deal with incoming serial bytes on CDC interface and place them in our command buffer */
@@ -88,6 +102,7 @@ void ProcessInput(void)
         }
 
         // Do some basic parsing for the command buffer
+        // XXX: this needs some more thought.
         if ((uint8_t)ReceivedByte == '%') {
             // Command start token
             cmdBuffer.data[0] = '%';
@@ -100,7 +115,7 @@ void ProcessInput(void)
                     cmdBuffer.status = CMD_READY;
                 } else {
                     if (cmdBuffer.len < (CMD_BUF_SIZE - 1)) {
-                        // Append characters
+                        // Append bytes
                         cmdBuffer.data[cmdBuffer.len++] = (uint8_t)ReceivedByte;
                         cmdBuffer.data[cmdBuffer.len+1] = '\0';
                     }
@@ -116,6 +131,10 @@ void ProcessInput(void)
             cmdBuffer.status = CMD_NOTREADY;
         }
     }
+}
+
+ISR(TIMER0_COMPA_vect) {
+    // Tick the clock, tell the display to service
 }
 
 /** Event handler for the library USB Connection event. */

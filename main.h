@@ -9,7 +9,6 @@
 #include <LUFA/Drivers/Board/LEDs.h>
 #include <LUFA/Drivers/USB/USB.h>
 #include <LUFA/Platform/Platform.h>
-//#include <LUFA/Common/Common.h>
 
 #define CMD_BUF_SIZE                32
 
