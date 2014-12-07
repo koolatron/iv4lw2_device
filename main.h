@@ -6,6 +6,9 @@
 
 #include "Descriptors.h"
 
+#include "include/shift.h"
+#include "include/iv4.h"
+
 #include <LUFA/Drivers/Board/LEDs.h>
 #include <LUFA/Drivers/USB/USB.h>
 #include <LUFA/Platform/Platform.h>
@@ -13,7 +16,7 @@
 #define CMD_BUF_SIZE                32
 
 #define FLASH_SIZE_BYTES            0x8000
-#define BOOTLOADER_SEC_SIZE_BYTES   0x1000  
+#define BOOTLOADER_SEC_SIZE_BYTES   0x1000
 #define BOOTLOADER_START_ADDRESS    (FLASH_SIZE_BYTES - BOOTLOADER_SEC_SIZE_BYTES)
 #define MAGIC_BOOT_KEY              0xCAFEBABE
 
@@ -27,7 +30,11 @@
 #define CMD_COMPLETE                0x02
 #define CMD_ERROR                   0x04
 
-uint32_t Boot_Key ATTR_NO_INIT;
+typedef struct {
+    uint8_t data[CMD_BUF_SIZE];
+    uint8_t status;
+    size_t  len;
+} buffer;
 
 /** Using the ATTR_INIT_SECTION(3) decoration causes gcc to place this function call in the .init3 section,
  *  which runs before main but after the stack is initialized.

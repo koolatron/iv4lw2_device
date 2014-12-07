@@ -40,7 +40,7 @@ void SHRSendByte(unsigned char byte) {
 
 }
 
-void SHRSendBuffer(unsigned char* buffer, unsigned char n) {
+void SHRSendBuffer(unsigned char* buffer) {
 	SHRSendByte(buffer[0]);
 	SHRSendByte(buffer[1]);
 	SHRSendByte(buffer[2]);

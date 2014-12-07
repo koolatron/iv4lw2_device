@@ -7,7 +7,7 @@
 
 void initSHR(void);
 void SHRSendByte(unsigned char byte);
-void SHRSendBuffer(unsigned char* buffer, unsigned char n);
+void SHRSendBuffer(unsigned char* buffer);
 void SHRLatch(void);
 void SHRReset(void);
 void SHRBlank(void);

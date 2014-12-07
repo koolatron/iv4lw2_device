@@ -26,20 +26,10 @@ USB_ClassInfo_CDC_Device_t VirtualSerial_CDC_Interface =
             },
     };
 
-
-/** Standard file stream for the CDC interface when set up, so that the virtual CDC COM port can be
- *  used like any regular character stream in the C APIs.
- */
+uint32_t Boot_Key ATTR_NO_INIT;
 static FILE USBSerialStream;
-
-/** Global variable to store commands from the USBSerial stream */
-typedef struct {
-    uint8_t data[CMD_BUF_SIZE];
-    uint8_t status;
-    size_t  len;
-} buffer;
-
 static buffer cmdBuffer;
+uint8_t bitBuffer[3];
 
 int main(void) {
     SetupHardware();
@@ -48,10 +38,17 @@ int main(void) {
     CDC_Device_CreateStream(&VirtualSerial_CDC_Interface, &USBSerialStream);
 
     GlobalInterruptEnable();
-    
+
+    /* Put a test pattern up */
+    SHRBlank();
+    bufferChar(bitBuffer, 'A');
+    selectGrid(bitBuffer, 0);
+    SHRSendBuffer(bitBuffer);
+    SHRLatch();
+    SHRUnblank();
+
     for (;;) {
         ProcessInput();
-        
         CDC_Device_USBTask(&VirtualSerial_CDC_Interface);
         USB_USBTask();
     };
@@ -70,6 +67,7 @@ void SetupHardware(void)
     /* Hardware Initialization */
     LEDs_Init();
     USB_Init();
+    initSHR();
 
     /* Initialize timer0 */
     /* This sets up a timer interrupt at 250Hz to signal display service */
@@ -93,7 +91,7 @@ void ProcessInput(void)
     int16_t ReceivedByte = CDC_Device_ReceiveByte(&VirtualSerial_CDC_Interface);
 
     if (!(ReceivedByte < 0 )) {
-        // Echo the received byte on the virtual serial interface 
+        // Echo the received byte on the virtual serial interface
         fputc(ReceivedByte, &USBSerialStream);
 
         // Jump to bootloader if the byte was 'X'
@@ -178,13 +176,13 @@ void Jump_To_Bootloader(void)
 {
     // If USB is used, detach from the bus and reset it
     USB_Disable();
-    
+
     // Disable all interrupts
     cli();
-    
+
     // Wait two seconds for the USB detachment to register on the host
     Delay_MS(2000);
-    
+
     // Set the bootloader key to the magic value and force a reset
     Boot_Key = MAGIC_BOOT_KEY;
     wdt_enable(WDTO_250MS);
