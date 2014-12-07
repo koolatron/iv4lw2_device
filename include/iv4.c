@@ -104,16 +104,16 @@ uint8_t* bufferChar(uint8_t* buffer, uint8_t index) {
 
 uint8_t* selectGrid(uint8_t* buffer, uint8_t n) {
 	if (n == 0) {
-		buffer[0] |= 0x08;
+		buffer[grid_a_byte] |= grid_a;
 	}
 	if (n == 1) {
-		buffer[0] |= 0x04;
+		buffer[grid_b_byte] |= grid_b;
 	}
 	if (n == 2) {
-		buffer[2] |= 0x40;
+		buffer[grid_c_byte] |= grid_c;
 	}
 	if (n == 3) {
-		buffer[2] |= 0x80;
+		buffer[grid_d_byte] |= grid_d;
 	}
 
 	return buffer;

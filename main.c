@@ -29,7 +29,9 @@ USB_ClassInfo_CDC_Device_t VirtualSerial_CDC_Interface =
 uint32_t Boot_Key ATTR_NO_INIT;
 static FILE USBSerialStream;
 static buffer cmdBuffer;
-uint8_t bitBuffer[3];
+uint8_t bitMap[4][3];
+uint8_t charMap[4];
+uint8_t timeMap[4];
 
 int main(void) {
     SetupHardware();
@@ -41,9 +43,9 @@ int main(void) {
 
     /* Put a test pattern up */
     SHRBlank();
-    bufferChar(bitBuffer, 'A');
-    selectGrid(bitBuffer, 0);
-    SHRSendBuffer(bitBuffer);
+    bufferChar(bitMap[0], 'A');
+    selectGrid(bitMap[0], 2);
+    SHRSendBuffer(bitMap[0]);
     SHRLatch();
     SHRUnblank();
 
