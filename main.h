@@ -36,13 +36,14 @@ typedef struct {
     size_t  len;
 } buffer;
 
-/** Using the ATTR_INIT_SECTION(3) decoration causes gcc to place this function call in the .init3 section,
+/** The ATTR_INIT_SECTION(3) decoration causes gcc to place this function in the .init3 section,
  *  which runs before main but after the stack is initialized.
  */
 void Bootloader_Jump_Check(void) ATTR_INIT_SECTION(3);
 void Jump_To_Bootloader(void);
 
 void ProcessInput(void);
+void ProcessDisplay(void);
 void SetupHardware(void);
 
 void EVENT_USB_Device_Connect(void);

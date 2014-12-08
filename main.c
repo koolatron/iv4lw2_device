@@ -32,6 +32,8 @@ static buffer cmdBuffer;
 uint8_t bitMap[4][3];
 uint8_t charMap[4];
 uint8_t timeMap[4];
+uint8_t activeGrid;
+uint8_t update;
 
 int main(void) {
     SetupHardware();
@@ -41,15 +43,13 @@ int main(void) {
 
     GlobalInterruptEnable();
 
-    /* Put a test pattern up */
-    SHRBlank();
-    bufferChar(bitMap[0], 'A');
-    selectGrid(bitMap[0], 2);
-    SHRSendBuffer(bitMap[0]);
-    SHRLatch();
-    SHRUnblank();
+    strncpy(charMap, "ASDF", 4);
 
     for (;;) {
+        if (update == 1) {
+            ProcessDisplay();
+        }
+
         ProcessInput();
         CDC_Device_USBTask(&VirtualSerial_CDC_Interface);
         USB_USBTask();
@@ -133,8 +133,22 @@ void ProcessInput(void)
     }
 }
 
+void ProcessDisplay(void) {
+    activeGrid++;
+    if (activeGrid >= 4)
+        activeGrid = 0;
+
+    bufferChar(bitMap[activeGrid], (uint8_t) charMap[activeGrid]);
+
+    SHRBlank();
+    selectGrid(bitMap[activeGrid], activeGrid);
+    SHRSendBuffer(bitMap[activeGrid]);
+    SHRLatch();
+    SHRUnblank();
+}
+
 ISR(TIMER0_COMPA_vect) {
-    // Tick the clock, tell the display to service
+    update = 1;
 }
 
 /** Event handler for the library USB Connection event. */
