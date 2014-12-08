@@ -79,9 +79,10 @@ void SetupHardware(void)
     TCCR0B |= (1 << CS02);                   // F/256 prescaler; start timer
 
     /* Initialize timer1 */
-    /* This sets up a 10kHz signal on OCR1B, PORTC5, to drive our filament */
+    /* This sets up a roughly 10kHz signal on OCR1B, PORTC5, to drive our filament */
+    /* We don't use exactly 10kHz because that sets up a beat frequency with display servicing */
     DDRC   |= (1 << 5);                      // Enable OCR1B as output pin
-    OCR1A   = 799;                           // Top count
+    OCR1A   = 825;                           // Top count
     TCCR1A |= (1 << COM1B0);                 // Toggle OCR1B on compare match
     TCCR1B |= (1 << WGM12) | (1 << CS10);    // CTC mode, F/1 prescaler; start timer
 }
