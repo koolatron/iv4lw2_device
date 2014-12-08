@@ -90,6 +90,11 @@ void SetupHardware(void)
 /** Function to deal with incoming serial bytes on CDC interface and place them in our command buffer */
 void ProcessInput(void)
 {
+    // Return if no bytes are waiting in the buffer
+    if ( CDC_Device_BytesReceived(&VirtualSerial_CDC_Interface) == 0 ) {
+        return;
+    }
+
     // Grab the next byte from the virutal serial interface
     int16_t ReceivedByte = CDC_Device_ReceiveByte(&VirtualSerial_CDC_Interface);
 
@@ -119,6 +124,7 @@ void ProcessInput(void)
                         // Append bytes
                         cmdBuffer.data[cmdBuffer.len++] = (uint8_t)ReceivedByte;
                         cmdBuffer.data[cmdBuffer.len+1] = '\0';
+                        charMap[0] = (uint8_t)ReceivedByte;
                     }
                 }
             }

@@ -8,14 +8,18 @@
 #ifndef IV4_H
 #define IV4_H
 
+/* Defining DISPLAY_REVERSED will swap the order in which our shift registers
+ * get their data.  This allows us to plug the display board in rotated 180
+ * degrees and keep the same grid/segment layout; the only thing that needs to
+ * change are the bitfield defines.
+ */
 #define DISPLAY_REVERSED
 
 /*  BIT CHAIN:
- *	lowercase letters: segments
- *	uppercase letters: grids
- *	--op ABah   gfnm --el   DCdc bkji
- *  ** Bitfield defines must have 0 on all grids! **
+ *  Default:
  *	--op --ah   gfnm --el   --dc bkji
+ *  Reversed:
+ *  --el --dc   bkji --op   --ah gfnm
  */
 
 #define blank		    0x00, 0x00, 0x00
@@ -34,9 +38,9 @@
 
   #define char_0    0x23, 0xa0, 0x3e
   #define char_1		0x03, 0x00, 0x00
-  #define char_2		0x21, 0xc1, 0x10
+  #define char_2		0x21, 0xc2, 0x2c
   #define char_3		0x23, 0xc0, 0x24
-  #define char_4		0x03, 0x41, 0x20
+  #define char_4		0x03, 0x42, 0x10
   #define char_5		0x22, 0xc2, 0x34
   #define char_6		0x22, 0xc2, 0x3c
   #define char_7		0x03, 0x80, 0x20
@@ -48,10 +52,10 @@
   #define char_D		0x23, 0x90, 0x25
   #define char_E		0x20, 0x82, 0x3c
   #define char_F		0x00, 0x82, 0x38
-  #define char_G		0x22, 0xc2, 0x3c
+  #define char_G		0x22, 0xc0, 0x3c
   #define char_H		0x03, 0x42, 0x18
   #define char_I		0x20, 0x90, 0x25
-  #define char_J		0x23, 0x42, 0x0c
+  #define char_J		0x23, 0x00, 0x0c
   #define char_K		0x10, 0x22, 0x18
   #define char_L		0x20, 0x00, 0x1c
   #define char_M		0x03, 0x21, 0x18
