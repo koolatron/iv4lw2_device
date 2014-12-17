@@ -1,11 +1,13 @@
 #include <avr/io.h>
 #include <avr/wdt.h>
+#include <avr/pgmspace.h>
 #include <avr/power.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
 #include "Descriptors.h"
 
+#include "include/time.h"
 #include "include/shift.h"
 #include "include/iv4.h"
 
@@ -34,7 +36,7 @@ typedef struct {
     uint8_t data[CMD_BUF_SIZE];
     uint8_t status;
     size_t  len;
-} buffer;
+} cbuffer_t;
 
 /** The ATTR_INIT_SECTION(3) decoration causes gcc to place this function in the .init3 section,
  *  which runs before main but after the stack is initialized.
@@ -42,6 +44,7 @@ typedef struct {
 void Bootloader_Jump_Check(void) ATTR_INIT_SECTION(3);
 void Jump_To_Bootloader(void);
 
+void ProcessCommand(void);
 void ProcessInput(void);
 void ProcessDisplay(void);
 void SetupHardware(void);

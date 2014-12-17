@@ -27,13 +27,16 @@ USB_ClassInfo_CDC_Device_t VirtualSerial_CDC_Interface =
     };
 
 uint32_t Boot_Key ATTR_NO_INIT;
+
 static FILE USBSerialStream;
-static buffer cmdBuffer;
+static cbuffer_t cmdBuffer;
+static time_t time;
+
 uint8_t bitMap[4][3];
 uint8_t charMap[4];
 uint8_t timeMap[4];
 uint8_t activeGrid;
-uint8_t update;
+volatile uint8_t update;
 
 int main(void) {
     SetupHardware();
@@ -47,7 +50,12 @@ int main(void) {
 
     for (;;) {
         if (update == 1) {
+            update_time(&time);
+            time_string(&time, charMap);
+            ProcessCommand();
             ProcessDisplay();
+
+            update = 0;
         }
 
         ProcessInput();
@@ -80,7 +88,7 @@ void SetupHardware(void)
 
     /* Initialize timer1 */
     /* This sets up a roughly 10kHz signal on OCR1B, PORTC5, to drive our filament */
-    /* We don't use exactly 10kHz because that sets up a beat frequency with display servicing */
+    /* The exact frequency here doesn't matter as long as it doesn't beat against the display mux rate */
     DDRC   |= (1 << 5);                      // Enable OCR1B as output pin
     OCR1A   = 825;                           // Top count
     TCCR1A |= (1 << COM1B0);                 // Toggle OCR1B on compare match
@@ -100,44 +108,47 @@ void ProcessInput(void)
 
     if (!(ReceivedByte < 0 )) {
         // Echo the received byte on the virtual serial interface
-        fputc(ReceivedByte, &USBSerialStream);
+        //fputc(ReceivedByte, &USBSerialStream);
 
         // Jump to bootloader if the byte was 'X'
         if ((uint8_t)ReceivedByte == 'X') {
             Jump_To_Bootloader();
         }
 
-        // Do some basic parsing for the command buffer
-        // XXX: this needs some more thought.
-        if ((uint8_t)ReceivedByte == '%') {
-            // Command start token
-            cmdBuffer.data[0] = '%';
-            cmdBuffer.data[1] = '\0';
-            cmdBuffer.len = 1;
-        } else {
-            if ((cmdBuffer.len > 0) && (cmdBuffer.status == CMD_NOTREADY)) {
-                if ((uint8_t)ReceivedByte == 0x0d) {
-                    // Command end token
-                    cmdBuffer.status = CMD_READY;
-                } else {
-                    if (cmdBuffer.len < (CMD_BUF_SIZE - 1)) {
-                        // Append bytes
-                        cmdBuffer.data[cmdBuffer.len++] = (uint8_t)ReceivedByte;
-                        cmdBuffer.data[cmdBuffer.len+1] = '\0';
-                        charMap[0] = (uint8_t)ReceivedByte;
-                    }
+        if (cmdBuffer.status != CMD_READY) {
+            // 0x0d means process this command
+            if ((uint8_t)ReceivedByte == 0x0d) {
+                cmdBuffer.status = CMD_READY;
+            } else {
+                // Anything else, append to buffer
+                if (cmdBuffer.len < (CMD_BUF_SIZE - 1)) {
+                    cmdBuffer.data[cmdBuffer.len++] = (uint8_t)ReceivedByte;
                 }
             }
         }
-
-        if (cmdBuffer.status == CMD_READY) {
-            fputs(cmdBuffer.data, &USBSerialStream);
-            fputs("\r\n", &USBSerialStream);
-            cmdBuffer.len = 0;
-            cmdBuffer.data[0] = '\0';
-            cmdBuffer.status = CMD_NOTREADY;
-        }
     }
+}
+
+void ProcessCommand(void) {
+    if (cmdBuffer.status != CMD_READY)
+        return;
+
+    //fputs(cmdBuffer.data, &USBSerialStream);
+    //fputs("\r\n", &USBSerialStream);
+
+    switch (cmdBuffer.data[0]) {
+        case 'P':
+            strncpy(charMap, &cmdBuffer.data[1], 4);
+            cmdBuffer.status = CMD_COMPLETE;
+            break;
+        default:
+            fputs_P(PSTR("Bad command!\r\n"), &USBSerialStream);
+            cmdBuffer.status = CMD_ERROR;
+    }
+
+    // Zero buffer data and length
+    memset(cmdBuffer.data, '\0', CMD_BUF_SIZE);
+    cmdBuffer.len = 0;
 }
 
 void ProcessDisplay(void) {
@@ -146,9 +157,9 @@ void ProcessDisplay(void) {
         activeGrid = 0;
 
     bufferChar(bitMap[activeGrid], (uint8_t) charMap[activeGrid]);
+    selectGrid(bitMap[activeGrid], activeGrid);
 
     SHRBlank();
-    selectGrid(bitMap[activeGrid], activeGrid);
     SHRSendBuffer(bitMap[activeGrid]);
     SHRLatch();
     SHRUnblank();
