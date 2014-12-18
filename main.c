@@ -47,6 +47,7 @@ int main(void) {
     GlobalInterruptEnable();
 
     strncpy(charMap, "ASDF", 4);
+    string_time("1259", &time);
 
     for (;;) {
         if (update == 1) {
@@ -139,6 +140,11 @@ void ProcessCommand(void) {
     switch (cmdBuffer.data[0]) {
         case 'P':
             strncpy(charMap, &cmdBuffer.data[1], 4);
+            cmdBuffer.status = CMD_COMPLETE;
+            break;
+        case 'T':
+            strncpy(timeMap, &cmdBuffer.data[1], 4);
+            string_time(timeMap, &time);
             cmdBuffer.status = CMD_COMPLETE;
             break;
         default:
