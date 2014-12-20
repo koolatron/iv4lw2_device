@@ -12,6 +12,7 @@
 #include "include/iv4.h"
 
 #include <LUFA/Drivers/Board/LEDs.h>
+#include <LUFA/Drivers/Board/Buttons.h>
 #include <LUFA/Drivers/USB/USB.h>
 #include <LUFA/Platform/Platform.h>
 

@@ -49,8 +49,18 @@ int main(void) {
     strncpy(charMap, "ASDF", 4);
     string_time("1259", &time);
 
+    if (Buttons_GetStatus() == BUTTONS_BUTTON1)
+        Jump_To_Bootloader();
+
     for (;;) {
+        /* A timer interrupt sets update = 1 every 4 milliseconds */
         if (update == 1) {
+
+            if((Buttons_GetStatus() == BUTTONS_BUTTON1) && ((time.ticks % 25) == 0)) {
+                time.minutes++;
+                time.seconds = 0;
+            }
+
             update_time(&time);
             time_string(&time, charMap);
             ProcessCommand();
@@ -76,6 +86,7 @@ void SetupHardware(void)
     clock_prescale_set(clock_div_1);
 
     /* Hardware Initialization */
+    Buttons_Init();
     LEDs_Init();
     USB_Init();
     initSHR();
