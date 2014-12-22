@@ -36,6 +36,9 @@ uint8_t bitMap[4][3];
 uint8_t charMap[4];
 uint8_t timeMap[4];
 uint8_t activeGrid;
+
+uint8_t* displayPtr;
+
 volatile uint8_t update;
 
 int main(void) {
@@ -49,11 +52,13 @@ int main(void) {
     strncpy(charMap, "ASDF", 4);
     string_time("1259", &time);
 
+    displayPtr = timeMap;
+
     if (Buttons_GetStatus() == BUTTONS_BUTTON1)
         Jump_To_Bootloader();
 
     for (;;) {
-        /* A timer interrupt sets update = 1 every 4 milliseconds */
+        /* A timer interrupt sets update to 1 every 4 milliseconds */
         if (update == 1) {
 
             if((Buttons_GetStatus() == BUTTONS_BUTTON1) && ((time.ticks % 25) == 0)) {
@@ -62,7 +67,7 @@ int main(void) {
             }
 
             update_time(&time);
-            time_string(&time, charMap);
+            time_string(&time, timeMap);
             ProcessCommand();
             ProcessDisplay();
 
@@ -93,7 +98,7 @@ void SetupHardware(void)
 
     /* Initialize timer0 */
     /* This sets up a timer interrupt at 250Hz to signal display service */
-    OCR0A   = 249;                           // Top count
+    OCR0A   = 249;                           // Top count; timer0 interrupt rate = 16MHz / (256 * (OCR0A + 1))
     TCCR0A |= (1 << WGM01);                  // CTC mode
     TIMSK0 |= (1 << OCIE0A);                 // Enable interrupt generation on OCR0A match
     TCCR0B |= (1 << CS02);                   // F/256 prescaler; start timer
@@ -150,10 +155,12 @@ void ProcessCommand(void) {
 
     switch (cmdBuffer.data[0]) {
         case 'P':
+            displayPtr = charMap;
             strncpy(charMap, &cmdBuffer.data[1], 4);
             cmdBuffer.status = CMD_COMPLETE;
             break;
         case 'T':
+            displayPtr = timeMap;
             strncpy(timeMap, &cmdBuffer.data[1], 4);
             string_time(timeMap, &time);
             cmdBuffer.status = CMD_COMPLETE;
@@ -173,7 +180,7 @@ void ProcessDisplay(void) {
     if (activeGrid >= 4)
         activeGrid = 0;
 
-    bufferChar(bitMap[activeGrid], (uint8_t) charMap[activeGrid]);
+    bufferChar(bitMap[activeGrid], (uint8_t) displayPtr[activeGrid]);
     selectGrid(bitMap[activeGrid], activeGrid);
 
     SHRBlank();
